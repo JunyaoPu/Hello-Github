@@ -250,8 +250,22 @@ def mainGame(movementInfo):
             else:
                 End_program = False
                 break
+        #print the distance of the birds and end the end the program
         if End_program:
+            for i in range(Num_birds):
+                print('the bird {0} fly distance is {1}'.format(i, birds[i].distance))
             return{}
+
+
+        #update the distance bird fly
+        for i in range(Num_birds):
+            if not crashTest[i][0]:
+                birds[i].distance += abs(pipeVelX)
+            '''
+            else:
+                print('the bird fly distance is ', birds[i].distance)
+            '''
+
 
 
         #The mid point of the bird x
