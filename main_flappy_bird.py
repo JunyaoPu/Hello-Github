@@ -5,23 +5,34 @@ import pygame
 from pygame.locals import *
 
 
+import copy
 from Bird import *
+from Gen_Alg import *
+'''note
+    #playerVelY    #playerFlapAcc   are changed to -4 for more stable one
+'''
 
 #number of birds
-Num_birds = 20
+Num_birds = 5
+last_generation = [0 for i in range(Num_birds)]
+Num_generation  = 0
+
+#show the best bird
+SHOW_BEST_BIRD  = True
+
 #set up the screen
-FPS = 30
+FPS = 30*4
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 # gap between upper and lower part of pipe
-PIPEGAPSIZE = 100
+PIPEGAPSIZE = 100           #100*1.2
 #the location of the ground
 BASEY       = SCREENHEIGHT * 0.79
 # image, sound and hitmask  dicts
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
 #on ubuntu
-address_assets = '/home/junyao/Flappy_Bird/assets/sprites/'
+address_assets = '/home/junyao/Documents/Neural_Network/Flappy_Bird/Flappy_Bird/assets/sprites/'
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -58,13 +69,10 @@ PIPES_LIST = (
     address_assets +'pipe-red.png',
 )
 
-#idk
 try:
     xrange
 except NameError:
     xrange = range
-
-
 
 
 def main():
@@ -97,7 +105,6 @@ def main():
     IMAGES['bird_dot'] = pygame.image.load(address_assets +'bird_dot.png').convert_alpha()
 
     while True:
-    #for i in range(1):
         # select random background sprites
         randBg = random.randint(0, len(BACKGROUNDS_LIST) - 1)
         IMAGES['background'] = pygame.image.load(BACKGROUNDS_LIST[randBg]).convert()
@@ -135,37 +142,77 @@ def main():
         mainGame(movementInfo)
 
 def showWelcomeAnimation():
+    global Num_generation
     messagex = int((SCREENWIDTH - IMAGES['message'].get_width()) / 2)
     messagey = int(SCREENHEIGHT * 0.12)
     basex = 10
     # amount by which base can maximum shift to left
     baseShift = IMAGES['base'].get_width() - IMAGES['background'].get_width()
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
-                return {
-                    'basex': basex,
-                }
-        # adjust playery, playerIndex, basex
-        basex = -((-basex + 4) % baseShift)
-        # draw sprites
-        SCREEN.blit(IMAGES['background'], (0,0))
-        SCREEN.blit(IMAGES['message'], (messagex, messagey))
-        SCREEN.blit(IMAGES['base'], (basex, BASEY))
-        pygame.display.update()
-        FPSCLOCK.tick(FPS)
+    if Num_generation == 0:
+            while True:
+                for event in pygame.event.get():
+                    if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+                        pygame.quit()
+                        sys.exit()
+                    if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                        return {
+                            'basex': basex,
+                        }
+
+                # adjust playery, playerIndex, basex
+                basex = -((-basex + 4) % baseShift)
+                # draw sprites
+                SCREEN.blit(IMAGES['background'], (0,0))
+                SCREEN.blit(IMAGES['message'], (messagex, messagey))
+                SCREEN.blit(IMAGES['base'], (basex, BASEY))
+                pygame.display.update()
+                FPSCLOCK.tick(FPS)
+
+    else:
+        while True:
+            # adjust playery, playerIndex, basex
+            basex = -((-basex + 4) % baseShift)
+            # draw sprites
+            SCREEN.blit(IMAGES['background'], (0,0))
+            SCREEN.blit(IMAGES['message'], (messagex, messagey))
+            SCREEN.blit(IMAGES['base'], (basex, BASEY))
+            pygame.display.update()
+            FPSCLOCK.tick(FPS)
+            return{'basex': basex,}
+
+
+
 def mainGame(movementInfo):
-    #initial 10 random birds
-    birds = []
+    global last_generation
+    global Num_generation
+    global  Num_birds
+    print('Generation:' + str(Num_generation))
+
+    birds = [0 for i in range(Num_birds)]
     crashTest = []
     crashTest_false = [False,False]
-    for i in range(Num_birds):
-        birds.append(BIRD())
-        crashTest.append(crashTest_false)
+
+    if Num_generation != 0:
+        '''Genetic Algorithm'''
+        '''Genetic Algorithm'''
+        '''Genetic Algorithm'''
+        '''Genetic Algorithm'''
+        GA      = Gen_Alg(Num_birds,last_generation)
+        GA.new_generation()
+        for i in range(Num_birds):
+            birds[i]                = copy.deepcopy(BIRD())
+            crashTest.append(crashTest_false)
+            birds[i].hidden1_mat    =   GA.child[i].hidden1_mat
+            birds[i].hidden2_mat    =   GA.child[i].hidden2_mat
+            birds[i].bias1_mat      =   GA.child[i].bias1_mat
+            birds[i].bias2_mat      =   GA.child[i].bias2_mat
+    else:
+        for i in range(Num_birds):
+            birds[i] = copy.deepcopy(BIRD())
+            crashTest.append(crashTest_false)
+            birds[i].set_up()
+
     #move the base
     basex = movementInfo['basex']
     baseShift = IMAGES['base'].get_width() - IMAGES['background'].get_width()
@@ -179,21 +226,24 @@ def mainGame(movementInfo):
 
     # list of upper pipes
     upperPipes = [
-        {'x': SCREENWIDTH + 200, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 200 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH - 100, 'y': newPipe1[0]['y']},
+        {'x': SCREENWIDTH - 100 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
-        {'x': SCREENWIDTH + 200, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 200 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH - 100, 'y': newPipe1[1]['y']},
+        {'x': SCREENWIDTH - 100 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
     ]
 
     #pipe velocity
     pipeVelX = -4
     # player velocity, max velocity, downward accleration, accleration on flap
-    playerVelY    =  -9   # player's velocity along Y, default same as playerFlapped
-    playerFlapAcc =  -9   # players speed on flapping
+    #playerVelY    =  -9   # player's velocity along Y, default same as playerFlapped
+    #playerFlapAcc =  -9   # players speed on flapping
+    playerVelY    =  -8   # player's velocity along Y, default same as playerFlapped
+    playerFlapAcc =  -8   # players speed on flapping
+
     playerMaxVelY =  10   # max vel along Y, max descend speed
     playerMinVelY =  -8   # min vel along Y, max ascend speed
     playerAccY    =   1   # players downward accleration
@@ -202,18 +252,41 @@ def mainGame(movementInfo):
     playerRotThr  =  20   # rotation threshold
     playerFlapped = False # True when player flaps
 
+
     #initialize the bird velocity
     for i in range(Num_birds):
         birds[i].birdVelY = playerVelY
 
-    #initialize the position of the closest pipe
     closest_pip_x = upperPipes[0]['x']
     closest_pip_y = lowerPipes[0]['y']
+
+    '''For showing the best bird'''
+    if SHOW_BEST_BIRD:
+        Num_birds   =   2
+        birds = [0 for i in range(Num_birds)]
+        crashTest = []
+        crashTest_false = [False,False]
+
+        for i in range(Num_birds):
+            birds[i] = copy.deepcopy(BEST_BIRD())
+            crashTest.append(crashTest_false)
 
     while True:
         for event in pygame.event.get():
             #close the program by user
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+
+                '''save the best bird'''
+                best_bird = birds[0].score
+                j         = 0
+                for i in range(Num_birds):
+                    if best_bird    <   birds[i].score:
+                        best_bird   =   birds[i].score
+                        j           =   i
+
+                save_bird(birds[j])
+
+
                 pygame.quit()
                 sys.exit()
 
@@ -247,13 +320,14 @@ def mainGame(movementInfo):
         for i in range(Num_birds):
             if crashTest[i][0]:
                 End_program = True
+
             else:
                 End_program = False
                 break
-        #print the distance of the birds and end the end the program
+        #print the distance of the birds and end the program
         if End_program:
-            for i in range(Num_birds):
-                print('the bird {0} fly distance is {1}'.format(i, birds[i].distance))
+            last_generation = copy.deepcopy(birds)
+            Num_generation  += 1
             return{}
 
 
@@ -261,30 +335,31 @@ def mainGame(movementInfo):
         for i in range(Num_birds):
             if not crashTest[i][0]:
                 birds[i].distance += abs(pipeVelX)
-            '''
-            else:
-                print('the bird fly distance is ', birds[i].distance)
-            '''
-
-
 
         #The mid point of the bird x
         for i in range(Num_birds):
             birds[i].xMidpos = birds[i].x + IMAGES['player'][0].get_width() / 2
+
         #the mid point of the pipe x
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             #check each bird and award points, locate the closest pipe position
             for i in range(Num_birds):
                 if pipeMidPos <= birds[i].xMidpos < pipeMidPos + 4:
-                    birds[i].score += 1
+                    #birds[i].score += 1
                     closest_pip_x = upperPipes[1]['x']
                     closest_pip_y = lowerPipes[1]['y']
+
         #check all birds and print the highest score on the screen
         for i in range(Num_birds):
-            score = 0
+
+            '''this score addition is wrong'''
+            if birds[i].x > closest_pip_x:
+                birds[i].score = copy.deepcopy(birds[i].score+1)
+
+
             if birds[i].score > score:
-                score = birds[i].score
+                score = copy.deepcopy(birds[i].score)
 
 
         # playerIndex basex change
@@ -342,10 +417,10 @@ def mainGame(movementInfo):
             SCREEN.blit(IMAGES['pipe'][0], (uPipe['x'], uPipe['y']))
             SCREEN.blit(IMAGES['pipe'][1], (lPipe['x'], lPipe['y']))
             #draw the center point for all pipes
-            SCREEN.blit(IMAGES['dot'], (lPipe['x']+20, lPipe['y']-50))
+            SCREEN.blit(IMAGES['dot'], (lPipe['x']+20, lPipe['y']-(PIPEGAPSIZE/2)))
 
         #draw the closest pipe only
-        SCREEN.blit(IMAGES['bird_dot'], (closest_pip_x+20,closest_pip_y-50))
+        SCREEN.blit(IMAGES['bird_dot'], (closest_pip_x+20,closest_pip_y-(PIPEGAPSIZE/2)))
 
 
         SCREEN.blit(IMAGES['base'], (basex, BASEY))
@@ -366,26 +441,29 @@ def mainGame(movementInfo):
             SCREEN.blit(IMAGES['bird_dot'], (birds[i].x+12,birds[i].y+12))
 
 
-        for i in range(Num_birds):
-            birds[i].input((closest_pip_x+20)-(birds[i].x+12) , (birds[i].y+12)-(closest_pip_y-50))
-            birds[i].Sigmoid()
+        '''here to do the prediction!!!'''
+        '''here to do the prediction!!!'''
+        '''here to do the prediction!!!'''
 
+        for i in range(Num_birds):
+            #birds[i].set_up()
+            birds[i].predict((closest_pip_x+20)-(birds[i].x+12) , (birds[i].y+12)-(closest_pip_y-(PIPEGAPSIZE/2)))
+
+        #print(str(birds[0].hidden1_mat) + 'and' + str(birds[2].hidden1_mat) )
+        #print(str(birds[0].hidden1_mat) + 'and' + str(birds[8].hidden1_mat) )
 
         pygame.display.update()
         FPSCLOCK.tick(FPS)
+
+
 def getRandomPipe():
     """returns a randomly generated pipe"""
     # y of gap between upper and lower pipe
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
 
-
-
     pipeHeight = IMAGES['pipe'][0].get_height()
     pipeX = SCREENWIDTH + 10
-
-
-
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
@@ -463,6 +541,36 @@ def getHitmask(image):
         for y in xrange(image.get_height()):
             mask[x].append(bool(image.get_at((x,y))[3]))
     return mask
+
+
+
+
+def save_bird(bird):
+
+    fileObject = open('/home/junyao/Documents/Neural_Network/Flappy_Bird/Flappy_Bird/Best_bird.txt', 'w')
+    fileObject.write('The score of this birds is: ' + str(bird.score))
+    fileObject.write('\n')
+    fileObject.write('\n')
+    fileObject.write('The first hidden layer:')
+    fileObject.write('\n')
+    fileObject.write(str(bird.hidden1_mat))
+    fileObject.write('\n')
+    fileObject.write('\n')
+    fileObject.write('The second hidden layer:')
+    fileObject.write('\n')
+    fileObject.write(str(bird.hidden2_mat))
+    fileObject.write('\n')
+    fileObject.write('\n')
+    fileObject.write('The first bias:')
+    fileObject.write('\n')
+    fileObject.write(str(bird.bias1_mat))
+    fileObject.write('\n')
+    fileObject.write('\n')
+    fileObject.write('The second bias:')
+    fileObject.write('\n')
+    fileObject.write(str(bird.bias2_mat))
+
+
 
 if __name__ == '__main__':
     main()
