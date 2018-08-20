@@ -4,13 +4,24 @@ import sys
 import pygame
 from pygame.locals import *
 
+import Genetics.evolver as Evo
 
-from Bird import *
+
+# TODO: Generate bird population outside of game loop.
+# TODO: Find way to start new game every time all birds crash.
+
+
+#from Bird import *
+#from Genetics.birdnetclass import BirdNet
+from Genetics.populationclass import Population
 
 #number of birds
-Num_birds = 20
+bird_population = Population()
+birds = bird_population.individuals
+
 #set up the screen
-FPS = 30
+SPEED = 1
+FPS = 30 * 20
 SCREENWIDTH  = 288
 SCREENHEIGHT = 512
 # gap between upper and lower part of pipe
@@ -21,7 +32,7 @@ BASEY       = SCREENHEIGHT * 0.79
 IMAGES, SOUNDS, HITMASKS = {}, {}, {}
 
 #on ubuntu
-address_assets = '/home/junyao/Flappy_Bird/assets/sprites/'
+address_assets = 'assets/sprites/'
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -68,6 +79,8 @@ except NameError:
 
 
 def main():
+    global birds
+
     global SCREEN, FPSCLOCK
     pygame.init()
     FPSCLOCK = pygame.time.Clock()
@@ -133,6 +146,8 @@ def main():
         movementInfo = showWelcomeAnimation()
         #this is the main body of the game
         mainGame(movementInfo)
+        bird_population.evolve()
+        print("DEBUGGING")
 
 def showWelcomeAnimation():
     messagex = int((SCREENWIDTH - IMAGES['message'].get_width()) / 2)
@@ -141,15 +156,28 @@ def showWelcomeAnimation():
     # amount by which base can maximum shift to left
     baseShift = IMAGES['base'].get_width() - IMAGES['background'].get_width()
 
+    # while True:
+    #     for event in pygame.event.get():
+    #         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
+    #             pygame.quit()
+    #             sys.exit()
+    #         if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+    #             return {
+    #                 'basex': basex,
+    #             }
+    #     # adjust playery, playerIndex, basex
+    #     basex = -((-basex + 4) % baseShift)
+    #     # draw sprites
+    #     SCREEN.blit(IMAGES['background'], (0,0))
+    #     SCREEN.blit(IMAGES['message'], (messagex, messagey))
+    #     SCREEN.blit(IMAGES['base'], (basex, BASEY))
+    #     pygame.display.update()
+    #     FPSCLOCK.tick(FPS)
+
     while True:
-        for event in pygame.event.get():
-            if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
-                return {
-                    'basex': basex,
-                }
+        return {
+            'basex': basex,
+        }
         # adjust playery, playerIndex, basex
         basex = -((-basex + 4) % baseShift)
         # draw sprites
@@ -158,13 +186,15 @@ def showWelcomeAnimation():
         SCREEN.blit(IMAGES['base'], (basex, BASEY))
         pygame.display.update()
         FPSCLOCK.tick(FPS)
+
+
+
 def mainGame(movementInfo):
+    #random.seed(1)
     #initial 10 random birds
-    birds = []
     crashTest = []
     crashTest_false = [False,False]
-    for i in range(Num_birds):
-        birds.append(BIRD())
+    for bird in birds:
         crashTest.append(crashTest_false)
     #move the base
     basex = movementInfo['basex']
@@ -190,21 +220,21 @@ def mainGame(movementInfo):
     ]
 
     #pipe velocity
-    pipeVelX = -4
+    pipeVelX = -4 * SPEED
     # player velocity, max velocity, downward accleration, accleration on flap
-    playerVelY    =  -9   # player's velocity along Y, default same as playerFlapped
-    playerFlapAcc =  -9   # players speed on flapping
-    playerMaxVelY =  10   # max vel along Y, max descend speed
-    playerMinVelY =  -8   # min vel along Y, max ascend speed
-    playerAccY    =   1   # players downward accleration
-    playerRot     =  45   # player's rotation
-    playerVelRot  =   3   # angular speed
-    playerRotThr  =  20   # rotation threshold
+    playerVelY    =  -7 * SPEED  # player's velocity along Y, default same as playerFlapped
+    playerFlapAcc =  -7 * SPEED  # players speed on flapping
+    playerMaxVelY =  10 * SPEED  # max vel along Y, max descend speed
+    playerMinVelY =  -8 * SPEED  # min vel along Y, max ascend speed
+    playerAccY    =   1 * SPEED  # players downward accleration
+    playerRot     =  45 * SPEED  # player's rotation
+    playerVelRot  =   3 * SPEED  # angular speed
+    playerRotThr  =  20 * SPEED  # rotation threshold
     playerFlapped = False # True when player flaps
 
     #initialize the bird velocity
-    for i in range(Num_birds):
-        birds[i].birdVelY = playerVelY
+    for bird in birds:
+        bird.birdVelY = playerVelY
 
     #initialize the position of the closest pipe
     closest_pip_x = upperPipes[0]['x']
@@ -227,64 +257,73 @@ def mainGame(movementInfo):
             '''
 
         #this is the brain of the birds
-        for i in range(Num_birds):
-            if birds[i].fly_up():
-                if birds[i].y > -2 * IMAGES['player'][0].get_height():
-                    birds[i].birdVelY = playerFlapAcc
-                    birds[i].birdFlapped =True
+        for bird in birds:
+            if bird.fly_up():
+                if bird.y > -2 * IMAGES['player'][0].get_height():
+                    bird.birdVelY = playerFlapAcc
+                    bird.birdFlapped =True
 
 
 
 
         #Check bird crash
-        for i in range(Num_birds):
+        i = 0
+        for bird in birds:
             if not crashTest[i][0]:
-                crashTest[i] = checkCrash({'x': birds[i].x, 'y': birds[i].y, 'index': 0},
+                crashTest[i] = checkCrash({'x': bird.x, 'y': bird.y, 'index': 0},
                                         upperPipes, lowerPipes)
+            i += 1
 
         #End the program until the last bird collision
         End_program = 0
-        for i in range(Num_birds):
+        i = 0
+        for bird in birds:
             if crashTest[i][0]:
                 End_program = True
             else:
                 End_program = False
                 break
+            i += 1
         #print the distance of the birds and end the end the program
+
+        i = 0
         if End_program:
-            for i in range(Num_birds):
-                print('the bird {0} fly distance is {1}'.format(i, birds[i].distance))
+            for bird in birds:
+                #print('the bird {0} fly distance is {1}'.format(i, bird.distance))
+                i += 1
+            print("SCORE IS ", score)
             return{}
 
 
         #update the distance bird fly
-        for i in range(Num_birds):
+        i = 0
+        for bird in birds:
             if not crashTest[i][0]:
-                birds[i].distance += abs(pipeVelX)
-            '''
+                bird.distance += abs(pipeVelX)
             else:
-                print('the bird fly distance is ', birds[i].distance)
-            '''
+                bird.x = 0
+                bird.y = 0
+            i += 1
 
 
 
         #The mid point of the bird x
-        for i in range(Num_birds):
-            birds[i].xMidpos = birds[i].x + IMAGES['player'][0].get_width() / 2
+        for bird in birds:
+            bird.xMidpos = bird.x + IMAGES['player'][0].get_width() / 2
         #the mid point of the pipe x
         for pipe in upperPipes:
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             #check each bird and award points, locate the closest pipe position
-            for i in range(Num_birds):
-                if pipeMidPos <= birds[i].xMidpos < pipeMidPos + 4:
-                    birds[i].score += 1
+            for bird in birds:
+                if pipeMidPos <= bird.xMidpos < pipeMidPos + 4:
+                    bird.score += 1
                     closest_pip_x = upperPipes[1]['x']
                     closest_pip_y = lowerPipes[1]['y']
         #check all birds and print the highest score on the screen
-        for i in range(Num_birds):
+        for bird in birds:
             score = 0
-            if birds[i].score > score:
-                score = birds[i].score
+            if bird.score > score:
+                score = bird.score
 
 
         # playerIndex basex change
@@ -294,24 +333,27 @@ def mainGame(movementInfo):
             playerRot -= playerVelRot
 
         # player's movement
-        for i in range (Num_birds):
-            if birds[i].birdVelY < playerMaxVelY and not birds[i].birdFlapped:
-                birds[i].birdVelY += playerAccY
+        for bird in birds:
+            if bird.birdVelY < playerMaxVelY and not bird.birdFlapped:
+                bird.birdVelY += playerAccY
 
-        for i in range(Num_birds):
-            if birds[i].birdFlapped:
-                birds[i].birdFlapped = False
+        for bird in birds:
+            if bird.birdFlapped:
+                bird.birdFlapped = False
                 playerRot = 45
 
         #fly up
         playerHeight = IMAGES['player'][0].get_height()
-        for i in range(Num_birds):
+
+        i = 0
+        for bird in birds:
             if not crashTest[i][0]:
                 #move along y axis if the bird still alive
-                birds[i].y += min(birds[i].birdVelY, BASEY - birds[i].y - playerHeight)
+                bird.y += min(bird.birdVelY, BASEY - bird.y - playerHeight)
             else:
                 #move the bird out of the screen if the bird is dead
-                birds[i].x += pipeVelX
+                bird.x += pipeVelX
+            i += 1
 
 
         # move pipes to left
@@ -323,7 +365,7 @@ def mainGame(movementInfo):
         closest_pip_x += pipeVelX
 
         # add new pipe when first pipe is about to touch left of screen
-        if 0 < upperPipes[0]['x'] < 5:
+        if 0 < upperPipes[0]['x'] < 5 * SPEED:
             newPipe = getRandomPipe()
             upperPipes.append(newPipe[0])
             lowerPipes.append(newPipe[1])
@@ -359,16 +401,17 @@ def mainGame(movementInfo):
         playerSurface = pygame.transform.rotate(IMAGES['player'][0], visibleRot)
 
         #draw all birds
-        for i in range(Num_birds):
+        for bird in birds:
             SCREEN.blit(pygame.transform.rotate(IMAGES['player'][0], visibleRot),
-                        (birds[i].x, birds[i].y))
+                        (bird.x, bird.y))
             #draw the dot on the birds
-            SCREEN.blit(IMAGES['bird_dot'], (birds[i].x+12,birds[i].y+12))
+            SCREEN.blit(IMAGES['bird_dot'], (bird.x+12,bird.y+12))
 
 
-        for i in range(Num_birds):
-            birds[i].input((closest_pip_x+20)-(birds[i].x+12) , (birds[i].y+12)-(closest_pip_y-50))
-            birds[i].Sigmoid()
+        for bird in birds:
+            bird.set_input((closest_pip_x+20)-(bird.x+12) , (bird.y+12)-(closest_pip_y-50))
+            # bird.propagate()
+            # bird.output_evaluate()
 
 
         pygame.display.update()
@@ -376,6 +419,7 @@ def mainGame(movementInfo):
 def getRandomPipe():
     """returns a randomly generated pipe"""
     # y of gap between upper and lower pipe
+
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
 
